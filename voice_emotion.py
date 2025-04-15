@@ -1,4 +1,4 @@
-# voice_sentiment.py
+# voice_emotion.py
 
 import speech_recognition as sr
 from vaderSentiment.vaderSentiment import SentimentIntensityAnalyzer
@@ -24,7 +24,7 @@ def voice_loop():
 
     while running:
         with sr.Microphone() as source:
-            print("🎤 Say something:")
+            print("Say something:")
             try:
                 audio = recognizer.listen(source, timeout=5)
                 text = recognizer.recognize_google(audio)
@@ -41,7 +41,7 @@ def voice_loop():
                 print("No speech detected.")
                 last_sentiment = "Unknown"
 
-def start_voice_detection():
+def start_sentiment_detection():
     thread = threading.Thread(target=voice_loop)
     thread.start()
 

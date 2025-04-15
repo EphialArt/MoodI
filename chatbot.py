@@ -1,96 +1,100 @@
-import openai
-import pyttsx3
 import speech_recognition as sr
+from transformers import BlenderbotTokenizer, BlenderbotForConditionalGeneration
+from google.cloud import texttospeech
+import pygame
+import os
+import threading
 
-# Initialize text-to-speech engine
-engine = pyttsx3.init()
-
-# OpenAI API key (replace with your actual key)
-openai.api_key = "your_openai_api_key"
-
-# Maintain conversation history for context
-conversation_history = [
-    {"role": "system", "content": "You are a helpful and empathetic assistant."}
-]
+# Load BlenderBot model and tokenizer
+tokenizer = BlenderbotTokenizer.from_pretrained("facebook/blenderbot-400M-distill")
+model = BlenderbotForConditionalGeneration.from_pretrained("facebook/blenderbot-400M-distill")
 
 # Initialize speech recognizer
 recognizer = sr.Recognizer()
 
+# Globals
+running = True
+
 def speak(message):
-    """Speak the chatbot's response."""
-    print(f"🤖 Chatbot: {message}")
-    engine.say(message)
-    engine.runAndWait()
+    print(f"Chatbot: {message}")
 
-def get_chatbot_response(user_input):
-    """Get a response from OpenAI's GPT model."""
+    client = texttospeech.TextToSpeechClient()
+
+    synthesis_input = texttospeech.SynthesisInput(text=message)
+
+    voice = texttospeech.VoiceSelectionParams(
+        language_code="en-GB", 
+        name="en-GB-Chirp3-HD-Leda" 
+    )
+
+    audio_config = texttospeech.AudioConfig(
+        audio_encoding=texttospeech.AudioEncoding.MP3 
+    )
+
+    response = client.synthesize_speech(
+        input=synthesis_input, voice=voice, audio_config=audio_config
+    )
+
+    with open("response.mp3", "wb") as out:
+        out.write(response.audio_content)
+
+    pygame.mixer.init()
+    pygame.mixer.music.load("response.mp3")
+    pygame.mixer.music.play()
+
+    while pygame.mixer.music.get_busy():
+        continue
+
+    pygame.mixer.quit()
+    os.remove("response.mp3")
+def get_blenderbot_response(user_input):
     try:
-        # Add user input to the conversation history
-        conversation_history.append({"role": "user", "content": user_input})
-
-        # Get the chatbot's response
-        response = openai.ChatCompletion.create(
-            model="gpt-4",
-            messages=conversation_history
-        )
-        chatbot_reply = response['choices'][0]['message']['content']
-
-        # Add the chatbot's reply to the conversation history
-        conversation_history.append({"role": "assistant", "content": chatbot_reply})
-
-        return chatbot_reply
+        inputs = tokenizer(user_input, return_tensors="pt")
+        reply_ids = model.generate(inputs["input_ids"], max_length=100)
+        response = tokenizer.decode(reply_ids[0], skip_special_tokens=True)
+        return response
     except Exception as e:
-        print(f"Error: {e}")
+        print(f"Error generating response: {e}")
         return "I'm having trouble responding right now. Please try again later."
 
-def listen_to_user():
-    """Listen to the user's voice input and return the transcribed text."""
-    with sr.Microphone() as source:
-        print("🎤 Listening...")
-        try:
-            audio = recognizer.listen(source, timeout=5)
-            user_input = recognizer.recognize_google(audio)
-            print(f"You said: {user_input}")
-            return user_input
-        except sr.UnknownValueError:
-            return "I couldn't understand that."
-        except sr.RequestError:
-            return "Speech recognition service is unavailable."
-        except sr.WaitTimeoutError:
-            return ""
+def voice_loop():
+    global running
 
-def hold_conversation(mood):
-    """Start a conversation based on the user's mood."""
-    # Define an initial message based on the mood
-    if mood == "Negative":
-        initial_message = "I noticed you've been feeling down. What's on your mind?"
-    elif mood == "Distressed":
-        initial_message = "You seem stressed. Is there something specific bothering you?"
-    elif mood == "Sad":
-        initial_message = "I'm here for you. Would you like to talk about why you're feeling sad?"
-    elif mood == "Tense":
-        initial_message = "You seem tense. Is there something I can help you with?"
-    elif mood == "Good":
-        initial_message = "You seem happy! What's been going well for you?"
-    else:
-        initial_message = "How are you feeling today?"
+    while running:
+        with sr.Microphone() as source:
+            print("Listening...")
+            try:
+                # Adjust for ambient noise (optional, improves recognition in noisy environments)
+                recognizer.adjust_for_ambient_noise(source, duration=0.5)
 
-    # Speak the initial message and start the conversation
-    speak(initial_message)
+                # Capture user input
+                audio = recognizer.listen(source, timeout=5)
+                user_input = recognizer.recognize_google(audio)
+                print(f"You said: {user_input}")
 
-    while True:
-        # Listen to the user's voice input
-        user_input = listen_to_user()
+                # Generate bot response
+                chatbot_reply = get_blenderbot_response(user_input)
 
-        # Check for specific phrases to trigger immediate responses
-        if user_input.lower() in ["i want to talk", "i need to talk"]:
-            chatbot_reply = "No problem, let's speak."
-        elif user_input.lower() in ["exit", "quit", "stop"]:
-            speak("Okay, take care!")
-            break
-        else:
-            # Get the chatbot's response
-            chatbot_reply = get_chatbot_response(user_input)
+                # Speak the bot's response
+                speak(chatbot_reply)
 
-        # Speak the chatbot's response
-        speak(chatbot_reply)
+            except sr.UnknownValueError:
+                print("Couldn't understand audio.")
+                speak("I couldn't understand that. Could you repeat?")
+            except sr.RequestError:
+                print("Speech service error.")
+                speak("Speech recognition service is unavailable.")
+            except sr.WaitTimeoutError:
+                speak("I didn't hear anything. Could you say that again?")
+                print("No speech detected.")
+            except Exception as e:
+                print(f"Unexpected error: {e}")
+                speak("An unexpected error occurred. Please try again.")
+
+def start_voice_detection():
+    """Start the voice detection loop in a separate thread."""
+    thread = threading.Thread(target=voice_loop)
+    thread.start()
+
+
+start_voice_detection()

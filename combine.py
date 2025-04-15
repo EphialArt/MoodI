@@ -1,17 +1,18 @@
 # combined_mood.py
 import csv
-from datetime import datetime
+from datetime import datetime, timedelta
 import os
-from collections import Counter
-from datetime import timedelta
 import time
+from collections import Counter
 from face_emotion import start_emotion_detection, get_last_emotion
-from voice_emotion import start_voice_detection, get_last_sentiment
-from chatbot import hold_conversation
+from voice_emotion import start_sentiment_detection, get_last_sentiment
+from chatbot import start_voice_detection
+
+start_emotion_detection()
 
 print("🔄 Starting mood detection...")
-start_emotion_detection()
-start_voice_detection()
+start_sentiment_detection()
+
 
 log_file = "mood_log.csv"
 
@@ -25,6 +26,7 @@ def log_mood(mood):
     with open(log_file, mode='a', newline='') as file:
         writer = csv.writer(file)
         writer.writerow([timestamp, mood])
+
 def get_average_mood():
     now = datetime.now()
     one_hour_ago = now - timedelta(hours=1)
@@ -58,7 +60,7 @@ try:
         if face_emotion == "happy" and voice_sentiment == "Positive":
             mood = "Good"
             print("User seems genuinely happy.")
-        elif face_emotion == "neutral" and voice_sentiment == "Positive":
+        elif face_emotion == "neutral" and voice_sentiment in ["Positive", "Neutral"]:
             mood = "Calm/Content"
             print("User is calm and in a good mental state.")
         elif face_emotion == "neutral" and voice_sentiment == "Negative":
@@ -90,12 +92,12 @@ try:
 
         log_mood(mood)
 
-        # Check average mood and trigger chatbot
+        # Check average mood and trigger chatbot (already running in background)
         average_mood = get_average_mood()
         if average_mood in ["Negative", "Distressed", "Sad"]:
-            hold_conversation(average_mood)
+            print("Chatbot is already running. Speak to it if you'd like to talk.")
 
         time.sleep(5)
 
 except KeyboardInterrupt:
-    print("\n🛑 Exiting...")
+    print("\nExiting...")

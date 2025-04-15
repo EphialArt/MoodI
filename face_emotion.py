@@ -5,6 +5,7 @@ import mediapipe as mp
 from deepface import DeepFace
 import numpy as np
 import threading
+import time
 
 # Globals
 last_emotion = "Undetected"
@@ -71,3 +72,4 @@ def start_emotion_detection():
 
 def get_last_emotion():
     return last_emotion
+
