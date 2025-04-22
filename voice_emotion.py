@@ -3,6 +3,7 @@
 import speech_recognition as sr
 from vaderSentiment.vaderSentiment import SentimentIntensityAnalyzer
 import threading
+import time
 
 recognizer = sr.Recognizer()
 analyzer = SentimentIntensityAnalyzer()
