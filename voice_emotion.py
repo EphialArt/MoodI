@@ -1,11 +1,10 @@
 # voice_emotion.py
-
 import speech_recognition as sr
 from vaderSentiment.vaderSentiment import SentimentIntensityAnalyzer
 import threading
 import time
+from speech_recognition_local import get_exception, get_message, start_speech_recognition  
 
-recognizer = sr.Recognizer()
 analyzer = SentimentIntensityAnalyzer()
 
 last_sentiment = "Unknown"
@@ -20,31 +19,49 @@ def analyze_sentiment(text):
     else:
         return "Neutral"
 
-def voice_loop():
+def sentiment_loop():
     global last_sentiment, running
 
     while running:
-        with sr.Microphone() as source:
-            print("Say something:")
-            try:
-                audio = recognizer.listen(source, timeout=5)
-                text = recognizer.recognize_google(audio)
-                print(f"You said: {text}")
-                last_sentiment = analyze_sentiment(text)
-                print(f"Sentiment: {last_sentiment}")
-            except sr.UnknownValueError:
-                print("Couldn't understand audio.")
+        text = get_message()
+        error = get_exception()
+
+        if error:
+            if isinstance(error, sr.UnknownValueError):
+                print("Couldn't understand audio (for sentiment).")
                 last_sentiment = "Unknown"
-            except sr.RequestError:
-                print("Speech service error.")
+            elif isinstance(error, sr.RequestError):
+                print("Speech service error (for sentiment).")
                 last_sentiment = "Unknown"
-            except sr.WaitTimeoutError:
-                print("No speech detected.")
+            elif isinstance(error, sr.WaitTimeoutError):
+                pass 
+            else:
+                print(f"Speech recognition error (for sentiment): {error}")
                 last_sentiment = "Unknown"
+            time.sleep(5) 
+            continue
+
+        if text:
+            print(f"Analyzing sentiment for: {text}")
+            last_sentiment = analyze_sentiment(text)
+            print(f"Sentiment: {last_sentiment}")
+            time.sleep(5) 
+
+        time.sleep(5)
 
 def start_sentiment_detection():
-    thread = threading.Thread(target=voice_loop)
+    thread = threading.Thread(target=sentiment_loop)
+    thread.daemon = True
     thread.start()
 
 def get_last_sentiment():
     return last_sentiment
+
+if __name__ == '__main__':
+    start_speech_recognition() 
+    start_sentiment_detection()
+    try:
+        pass
+    except KeyboardInterrupt:
+        print("Stopping sentiment detection.")
+        running = False

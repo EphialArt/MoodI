@@ -73,3 +73,12 @@ def start_emotion_detection():
 def get_last_emotion():
     return last_emotion
 
+if __name__ == '__main__':
+    start_emotion_detection()
+    try:
+        while True:
+            time.sleep(1)
+            print(f"Last detected emotion: {get_last_emotion()}")
+    except KeyboardInterrupt:
+        print("Stopping face emotion detection...")
+        running = False
