@@ -1,2 +1,2 @@
 # MoodI
-Mood Regulation by combining empathetic chatbots with mood data from vocal and facial emotional cues
+Multi-modal mood detection and interactive system. Analyzes a user's emotional state through facial expressions, voice sentiment, and spoken commands, and then responds accordingly.
