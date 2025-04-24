@@ -9,8 +9,22 @@ message = ""
 last_exception = None
 
 def speech_loop():
-    global message, last_exception
+    global message, last_exception, running
+    counter = 1
+    connected = False
     while running:
+        while connected == False:
+            try:
+                with sr.Microphone() as source:
+                    if counter != 0:
+                        print("Attempting to connect to microphone")
+                        connected = True
+            except:
+                print("Microphone not found. Please check your microphone connection.")
+                counter += 1
+                connected = False
+                time.sleep(2)
+        counter = 0
         with sr.Microphone() as source:
             print("Say something:")
             try:
@@ -20,21 +34,21 @@ def speech_loop():
                 last_exception = None  
             except sr.UnknownValueError:
                 last_exception = sr.UnknownValueError
-                print(f"SpeechService erro {last_exception}")
+                print(f"SpeechService error {last_exception}")
             except sr.RequestError as e:
                 last_exception = sr.RequestError
                 message = "" 
                 print(f"Speech service error: {e}")
             except sr.WaitTimeoutError:
                 last_exception = sr.WaitTimeoutError
-                print(f"SpeechService erro {last_exception}")
+                print(f"SpeechService error {last_exception}")
             except Exception as e:
                 last_exception = e
                 print(f"An unexpected error occurred during speech recognition: {e}")
             time.sleep(2)
+                
 
 def get_message():
-    global message
     return message
 
 def get_exception():

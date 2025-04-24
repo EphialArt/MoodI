@@ -1,3 +1,4 @@
+#combine.py
 import csv
 from datetime import datetime, timedelta
 import os
@@ -16,7 +17,7 @@ error = None
 running = False
 background_running = True
 log_file = "mood_log.csv"
-
+three_hours_ago = datetime.now() - timedelta(hours=3)
 start_speech_recognition()  
 
 if not os.path.exists(log_file):
@@ -67,8 +68,7 @@ def get_smoothed_mood(current_face_emotion, current_voice_sentiment):
     return weighted_mood, smoothed_face, smoothed_voice
 
 def too_negative(threshold):
-    now = datetime.now()
-    three_hours_ago = now - timedelta(hours=3)
+    global three_hours_ago
     moods_count = 0
     neg_moods_count = 0
 
@@ -92,6 +92,7 @@ def too_negative(threshold):
         return False
 
     if moods_count > 0 and (neg_moods_count / moods_count) >= threshold:
+        three_hours_ago = datetime.now()
         return True
     return False
 

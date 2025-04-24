@@ -26,11 +26,17 @@ def enhance_contrast(image):
 def emotion_loop():
     global last_emotion, running
     cap = cv2.VideoCapture(0)
-
+    if not cap.isOpened():
+        print("Error: Could not open the camera. Please ensure it is connected and accessible.")
+        running = False
+        return
+    
     while running:
         ret, frame = cap.read()
         if not ret:
-            continue
+            print("Error: Could not read frame from the camera. Exiting.")
+            running = False
+            break
 
         rgb_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
         results = detector.process(rgb_frame)
@@ -76,7 +82,8 @@ def get_last_emotion():
 if __name__ == '__main__':
     start_emotion_detection()
     try:
-        while True:
+        count = 0
+        while running:
             time.sleep(1)
             print(f"Last detected emotion: {get_last_emotion()}")
     except KeyboardInterrupt:
